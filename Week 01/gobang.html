@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gobang</title>
+  <style>
+    canvas {
+      display: block;
+      margin: 50px auto;
+      box-shadow: -2px -2px 2px #EFEFEF, 5px 5px 5px #B9B9B9;
+    }
+
+  </style>
+</head>
+<body>
+  <canvas id="board" width="450px" height="450px"></canvas>
+<script>
+  let chessBoard = Array(15 * 15).fill(0)
+  let me = true
+  let over = false
+
+  // 赢法数组
+  let wins = []
+
+  // 赢法的统计数组
+  let myWin = []
+  let computerWin = []
+
+  // wins中每一对i、j对应一个落子点，每一个点可能属于572种赢法中的某几种，每一种赢法对应着五个连续相同的棋子
+  // myWin和computerWin分别用来统计用户和电脑对应572种赢法中，对应赢法当前存在几个连续相同的棋子，当总数为5时，即该赢法对应的五个位置全部落棋子，获胜
+  for (let i = 0; i < 15; i++) {
+    wins[i] = []
+    for (let j = 0; j < 15; j++) {
+      wins[i][j] = []
+    }
+  }
+
+  // 记录每一种赢法ID
+  let count = 0
+  // 统计行
+  for (let i = 0; i < 15; i++) {
+    for (let j = 0; j < 11; j++) {
+      for (let k = 0; k < 5; k++) {
+        wins[i][j + k][count] = true
+      }
+      count++
+    }
+  }
+
+  // 统计列
+  for (let i = 0; i < 15; i++) {
+    for (let j = 0; j < 11; j++) {
+      for (let k = 0; k < 5; k++) {
+        wins[j + k][i][count] = true
+      }
+      count++
+    }
+  }
+
+  // 统计正斜
+  for (let i = 0; i < 11; i++) {
+    for (let j = 0; j < 11; j++) {
+      for (let k = 0; k < 5; k++) {
+        wins[i + k][j + k][count] = true
+      }
+      count++
+    }
+  }
+
+  // 统计反斜
+  for (let i = 0; i < 11; i++) {
+    for (let j = 14; j > 3; j--) {
+      for (let k = 0; k < 5; k++) {
+        wins[i + k][j - k][count] = true
+      }
+      count++
+    }
+  }
+
+  // 初始化所有赢法，每一种赢法当前落子数为0
+  for (let i = 0; i < count; i++) {
+    myWin[i] = 0
+    computerWin[i] = 0
+  }
+
+  let chess = document.getElementById('board')
+  let ctx = chess.getContext('2d')
+
+  ctx.strokeStyle = '#e6e6e6'
+
+  let logo = new Image()
+  logo.src = "./bg.jpg"
+
+  logo.onload = function() {
+    ctx.drawImage(logo, 0, 0, 450, 450)
+    drawChessBoard()
+  }
+
+  let drawChessBoard = function() {
+    for (let i = 0; i < 15; i++) {
+      ctx.moveTo(15 + i * 30, 15)
+      ctx.lineTo(15 + i * 30, 435)
+      ctx.stroke()
+      ctx.moveTo(15,15 + i * 30)
+      ctx.lineTo(435,15 + i * 30)
+      ctx.stroke()
+    }
+  }
+
+  // 落一子
+  const oneStep  = function(i, j, me) {
+    ctx.beginPath()
+    ctx.arc(15 + j * 30,15 + i * 30, 13, 0, 2 * Math.PI)
+    ctx.closePath()
+    let gradient = ctx.createRadialGradient(15 + j * 30 + 2,15 + i * 30 - 2, 13, 15 + j * 30 + 2,15 + i * 30 - 2, 0)
+    if (me) {
+      gradient.addColorStop(0, "#0A0A0A")
+      gradient.addColorStop(1, "#637666")
+    } else {
+      gradient.addColorStop(0, "#D1D1D1")
+      gradient.addColorStop(1, "#F9F9F9")
+    }
+    ctx.fillStyle = gradient
+    ctx.fill()
+  }
+
+  chess.onclick = function(e) {
+    if (over) return
+    if (!me) return
+    let x = e.offsetX
+    let y = e.offsetY
+    let i = ~~(y / 30)
+    let j = ~~(x / 30)
+    // 不能重复落子
+    if (chessBoard[15 * i + j]) return
+    oneStep(i, j, me)
+    chessBoard[15 * i + j] = 1
+
+    // 根据当前落子落子，遍历所有赢法，如果当前落子属于某种赢法当中，则对应赢法落子数加1
+    for (let k = 0; k < count; k++) {
+      if (wins[i][j][k]) {
+        myWin[k]++
+        // 对方在当前赢法已不可能取胜
+        computerWin[k] = 6
+        if (myWin[k] === 5) {
+          window.alert("你赢了")
+          over = true
+        }
+      }
+    }
+
+    if (!over) {
+      me = !me
+      computerAI()
+    }
+  }
+
+  const computerAI = function() {
+    let myScore = []
+    let computerScore = []
+    let max = 0
+    let u = 0, v = 0
+    // 初始化每一个落子点，用户和电脑对应的得分为0
+    for (let i = 0; i < 15; i++) {
+      myScore[i] = []
+      computerScore[i] = []
+      for (let j = 0; j < 15; j++) {
+        myScore[i][j] = 0
+        computerScore[i][j] = 0
+      }
+    }
+    // 统计每一个落子点，计算出当前落子点用户和电脑各自的得分，只要当前落子点属于某种赢法当中，根据当前赢法已落子数，给予不同等级的权重分，统计出最高分，如果用户当前分大于最高分，那么记录当前点，阻止用户得最高分，如果当前电脑得分大于最高分，记录当前点，为最佳落子点
+    for (let i = 0; i < 15; i++) {
+      for (let j = 0; j < 15; j++) {
+        // 统计每一个空位的得分
+        if (chessBoard[15 * i + j] === 0) {
+          for (let k = 0; k < count; k++) {
+            if (wins[i][j][k]) {
+              if (myWin[k] === 1) {
+                myScore[i][j] += 200
+              } else if (myWin[k] === 2) {
+                myScore[i][j] += 400
+              } else if (myWin[k] === 3) {
+                myScore[i][j] += 2000
+              } else if (myWin[k] === 4) {
+                myScore[i][j] += 10000
+              }
+
+              if (computerWin[k] === 1) {
+                computerScore[i][j] += 220
+              } else if (computerWin[k] === 2) {
+                computerScore[i][j] += 420
+              } else if (computerWin[k] === 3) {
+                computerScore[i][j] += 2100
+              } else if (computerWin[k] === 4) {
+                computerScore[i][j] += 20000
+              }
+            }
+          }
+          if (myScore[i][j] > max) {
+            max = myScore[i][j]
+            u = i
+            v = j
+          } else if (myScore[i][j] === max) {
+            if (computerScore[i][j] > computerScore[u][v]) {
+              u = i
+              v = j
+            }
+          }
+
+          if (computerScore[i][j] > max) {
+            max = computerScore[i][j]
+            u = i
+            v = j
+          } else if (computerScore[i][j] === max) {
+            if (myScore[i][j] < myScore[u][v]) {
+              u = i
+              v = j
+            }
+          }
+        }
+      }
+    }
+    oneStep(u, v, false)
+    chessBoard[15 * u + v] = 2
+    for (let k = 0; k < count; k++) {
+      if (wins[u][v][k]) {
+        computerWin[k]++
+        myWin[k] = 6
+        if (computerWin[k] === 5) {
+          window.alert("电脑赢了")
+          over = true
+        }
+      }
+    }
+    if (!over) {
+      me = !me
+    }
+  }
+  
+</script>
+</body>
+</html>

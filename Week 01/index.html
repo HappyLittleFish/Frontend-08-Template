@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TicTacToe</title>
+  <style>
+    .cell {
+      width: 100px;
+      height: 100px;
+      background: yellowgreen;
+      border: 1px solid white;
+      display: inline-block;
+      vertical-align: middle;
+
+      line-height: 100px;
+      font-size: 50px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="board"></div>
+
+<script>
+  let pattern, row, col, robotStatus, robotColor, color
+
+  robotStatus = confirm("你想要执黑棋吗？(黑棋先手)") ? false : true
+  robotColor = robotStatus ? 1 : 2
+  col = row = 3
+  pattern = Array(col * row).fill(0)
+  color = robotStatus ? robotColor : 3 - robotColor 
+  
+  // AI先手，中点下一子
+  if (robotStatus) {
+    pattern[(~~(row/2))*col + ~~(col/2)] = 1
+    color = 3 - color
+    robotStatus = !robotStatus
+  }
+  show(pattern)
+  
+  function show(pattern) {
+    let board = document.getElementById('board')
+    board.innerHTML = ""
+    for (let i = 0; i < row; i++) {
+      for (let j = 0; j < col; j++) {
+        let cell = document.createElement('div')
+        cell.classList.add('cell');
+        cell.innerHTML = pattern[i * col + j] === 1 ? "⚫️" :
+        pattern[i * col + j] === 2 ? "⚪" : "";
+        cell.addEventListener('click', () => move(i * col + j))
+        board.appendChild(cell)
+      }
+      board.appendChild(document.createElement('br'))
+    }
+  }
+  function move(i) {
+    pattern[i] = color
+    show(pattern)
+    if (check(pattern, color)) {
+      alert(color === 1 ? "⚫️ is winner!" : "⚪ is winner")
+    }
+    color = 3 - color
+    if (willWin(pattern, color)) {
+      console.log(color === 1 ? "⚫️ will win!" : "⚪ will win")
+    }
+    if (!robotStatus) {
+      robotStatus = !robotStatus
+      robotMove()
+    } else {
+      robotStatus = !robotStatus
+    }
+  }
+
+  function robotMove() {
+    let point = bestChoice(pattern, color).point
+    move(point)
+  }
+
+  function clone(obj) {
+    return Object.create(obj)
+  }
+
+  function willWin(pattern, color) {
+    for (let i = 0; i < row; i++) {
+      for (let j = 0; j < col; j++) {
+        if (!pattern[i * col + j]) {
+          let cloneP = clone(pattern)
+          cloneP[i * col + j] = color
+          if (check(cloneP, color)) {
+            return i * col + j
+          }
+        }
+      }
+    }
+    return null
+  }
+
+  function check(pattern, color) {
+    for (let i = 0; i < row; i++) {
+      let win = true
+      for (let j = 0; j < col; j++) {
+        if (pattern[i * col + j] !== color) {
+          win = false
+          break
+        }
+      }
+      if (win) return true
+    }
+
+    for (let j = 0; j < col; j++) {
+      let win = true
+      for (let i = 0; i < row; i++) {
+        if (pattern[i * col + j] !== color) {
+          win = false
+          break
+        }
+      }
+      if (win) return true
+    }
+
+    {
+      let win = true
+      for (let i = 0; i < row; i++) {
+        if(pattern[i * col + i] !== color) {
+          win = false
+          break
+        }
+      }
+      if (win) return true
+    }
+    
+    {
+      let win = true
+      for (let i = 0; i < row; i++) {
+        if(pattern[i * col + col - 1 - i] !== color) {
+          win = false
+          break
+        }
+      }
+      if (win) return true
+    }
+    return false
+  }
+
+  function bestChoice(pattern, color) {
+    let p
+    if (p = willWin(pattern, color)) {
+      return {
+        point: p,
+        result: 1
+      }
+    }
+
+    let result = -2
+    let point = undefined
+    outer:for (let i = 0; i < row; i++) {
+      for (let j = 0; j < col; j++) {
+        if (!pattern[i * col + j]) {
+          let temp = clone(pattern)
+          temp[i * col + j] = color
+          let oppoRes = bestChoice(temp, 3 - color).result
+
+          if (- oppoRes > result ) {
+            result = - oppoRes
+            point = i * col + j
+          }
+          if (result === 1) {
+            break outer
+          }
+        }
+      }
+    }
+    return {
+      point,
+      result: point !== undefined ? result : 0
+    }
+  }
+</script>
+</body>
+</html>

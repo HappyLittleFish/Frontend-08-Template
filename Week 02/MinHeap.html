@@ -125,6 +125,7 @@
           await sleep(30)
           container.children[y * 100 + x].style.backgroundColor = 'purple'
         }
+        console.log('路径长度',path.length)
         return path
       }
       await insert(x - 1, y, [x, y])
@@ -146,8 +147,30 @@
     async function insert(x, y, pre) {
       if (x < 0 || x >= 100 || y < 0 || y >= 100)
         return
-      if (table[y * 100 + x])
+
+      // 是墙就return
+      if(table[y * 100 + x] === 1) return
+
+      // 判断存储的上个坐标点访问到此坐标距离起点的路径长度，与当前pre坐标点访问到此坐标距离起点的路径长度哪个短，替换为更短的路径
+      if(table[y * 100 + x]) {
+        let i = j = 0, a, b , c, d
+        ;[a, b] = table[y * 100 + x]
+        ;[c, d] = pre
+        while (a !== start[0] || b !== start[1]) {
+          i++
+          ;[a, b] = table[b * 100 + a]
+        }
+        while (c !== start[0] || d !== start[1]) {
+          j++
+          ;[c, d] = table[d * 100 + c]
+        }
+        // 之前存储的路径更长，替换为新pre坐标点
+        if (i > j) {
+          // console.log('替换前后', table[y * 100 + x], pre,i,j)
+          table[y * 100 + x] = pre
+        }
         return
+      }
       
       // await sleep(30)
       container.children[y * 100 + x].style.backgroundColor = 'lightgreen'

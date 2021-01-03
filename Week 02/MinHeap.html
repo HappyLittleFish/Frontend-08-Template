@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>寻路</title>
+  <title>寻路-最小堆</title>
   <style>
     #container {
       display:flex;
@@ -24,36 +24,58 @@
 <div id="container"></div>
 <button onclick="localStorage.setItem('map',JSON.stringify(map))">保存</button>
 <script>
-class Sorted {
-  constructor(data, compare) {
-    this.data = data.slice()
-    this.compare = compare || ((a, b) => a - b)
-  }
-  take() {
-    if (!this.data.length) 
-      return
-    let min = this.data[0]
-    let minIndex = 0
-
-    for (let i = 0; i < this.data.length; i++) {
-      if (this.compare(this.data[i], min) < 0) {
-        min = this.data[i]
-        minIndex = i
-      }
+  class MinHeap {
+    constructor(compareFn = (a, b) => a - b ) {
+        this.heap = []
+        this.compareFn = compareFn
     }
-
-    this.data[minIndex] = this.data[this.data.length - 1]
-    this.data.pop()
-    return min
+    peek() {
+        return this.heap[0]
+    }
+    extract() {
+      if(this.size() === 0) {
+        return undefined
+      }
+      if(this.size() === 1) {
+        return this.heap.shift()
+      }
+      const removedValue = this.peek()
+      this.heap[0] = this.heap[this.size() - 1]
+      this.heap.length -= 1
+      this.shiftDown(0)
+      return removedValue
+    }
+    size() {
+        return this.heap.length
+    }
+    add(val) {
+        this.heap.push(val)
+        this.shiftUp(this.size() - 1)
+    }
+    swap(i1,i2) {
+        [this.heap[i1], this.heap[i2]] = [this.heap[i2], this.heap[i1]]
+    }
+    shiftUp(index) {
+        if(index === 0) return
+        const parentIndex = index - 1 >> 1
+        if(this.compareFn(this.heap[parentIndex], this.heap[index]) > 0) {
+            this.swap(index, parentIndex)
+            this.shiftUp(parentIndex)
+        }
+    }
+    shiftDown(parentIndex) {
+        const leftChild = parentIndex * 2 + 1
+        const rightChild  = parentIndex * 2 + 2
+        if(leftChild < this.size() && this.compareFn(this.heap[parentIndex], this.heap[leftChild]) > 0) {
+            this.swap(parentIndex, leftChild)
+            this.shiftDown(leftChild)
+        }
+        if(rightChild < this.size() && this.compareFn(this.heap[parentIndex], this.heap[rightChild]) > 0) {
+            this.swap(parentIndex, rightChild)
+            this.shiftDown(rightChild)
+        }
+    }
   }
-  give(v) {
-    this.data.push(v)
-  }
-  get length() {
-    return this.data.length
-  }
-}
-
   let map = localStorage.getItem('map') ? JSON.parse(localStorage.getItem('map')) : Array(10000).fill(0)
   let container = document.getElementById('container')
   
@@ -89,10 +111,11 @@ class Sorted {
   
   async function findPath(map, start, end) {
     let table = Object.create(map)
-    let queue = new Sorted([start], (a, b) => distance(a) - distance(b))
+    let queue = new MinHeap((a, b) => distance(a) - distance(b))
+    queue.add(start)
 
-    while (queue.length) {
-      let [x, y] = queue.take()
+    while (queue.size()) {
+      let [x, y] = queue.extract()
       if (x === end[0] && y === end[1]) {
         let path = []
 
@@ -129,7 +152,7 @@ class Sorted {
       // await sleep(30)
       container.children[y * 100 + x].style.backgroundColor = 'lightgreen'
       table[y * 100 + x] = pre
-      queue.give([x, y])
+      queue.add([x, y])
     }
   }
   function sleep(t) {

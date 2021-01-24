@@ -1,0 +1,99 @@
+<input id="r" type="range" mix=0 max=255 />
+<input id="g" type="range" mix=0 max=255 />
+<input id="b" type="range" mix=0 max=255 />
+<script>
+  let callbacks = new Map()
+  let reactivities = new Map()
+  let useReactivities = []
+
+  let obj = {
+    r: 0,
+    g: 0,
+    b: 0
+  }
+
+  let po = reactive(obj)
+
+  // effect(() => {
+  //   console.log('改变a',po.a.val)
+  // })
+  let div = document.createElement('div')
+  div.setAttribute('id','color')
+  div.style.width = 100
+  div.style.height = 100
+  document.body.appendChild(div)
+
+  effect(() => {
+    document.getElementById('r').value = po.r
+  })
+
+  effect(() => {
+    document.getElementById('g').value = po.g
+  })
+
+  effect(() => {
+    document.getElementById('b').value = po.b
+  })
+
+  effect(() => {
+    document.getElementById('color').style.background = `rgb(${po.r},${po.g},${po.b})`
+  })
+
+  document.getElementById('r').addEventListener('input', function(event) {
+    po.r = event.target.value
+  })
+  document.getElementById('g').addEventListener('input', function(event) {
+    po.g = event.target.value
+  })
+  document.getElementById('b').addEventListener('input', function(event) {
+    po.b = event.target.value
+  })
+
+
+
+  function effect(callback) {
+    useReactivities = []
+    callback()
+    console.log(useReactivities[0])
+
+    for (let reactivity of useReactivities) {
+      if(!callbacks.has(reactivity[0])) {
+        callbacks.set(reactivity[0], new Map())
+      }
+      if(!callbacks.get(reactivity[0]).has(reactivity[1])) {
+        callbacks.get(reactivity[0]).set(reactivity[1],[])
+      }
+      callbacks.get(reactivity[0]).get(reactivity[1]).push(callback)
+    }
+  }
+
+  function reactive(obj) {
+    if (reactivities.has(obj)) {
+      return reactivities.get(obj)
+    }
+    let proxy = new Proxy(obj, {
+      set(obj, prop, val) {
+        obj[prop] = val
+        if(callbacks.get(obj)) {
+          if(callbacks.get(obj).get(prop)) {
+            let cbs = callbacks.get(obj).get(prop)
+            for (cb of cbs) {
+              cb()
+            }
+          }
+        }
+        return obj
+      },
+      get(obj, prop) {
+        useReactivities.push([obj, prop])
+        if (typeof obj[prop] === 'object') {
+          // 如果仍是对象需要深度转为响应式，为了确保每次return返回的是同一个proxy，所以通过reactivities做缓存
+          return reactive(obj[prop])
+        }
+        return obj[prop]
+      }
+    })
+    reactivities.set(obj, proxy)
+    return proxy
+  }
+</script>
